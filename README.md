@@ -6,6 +6,7 @@ Based on https://calc.pokemonshowdown.com for the idea. Developped, for now, for
 
 ## Roadblocks
 - Full coverage testing
+- Up to date documentation
 - 'Pokemon' class with stats, typing, nature, etc
 - 'Attack' class with power, typing, extra effects
 - 'Item' class
