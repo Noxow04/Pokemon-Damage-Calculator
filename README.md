@@ -16,3 +16,4 @@ Based on https://calc.pokemonshowdown.com for the idea. Developped, for now, for
 ### Extras
 - Speed optimiser
 - Bulk optimiser
+- Multiple languages support
