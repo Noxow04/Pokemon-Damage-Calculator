@@ -8,11 +8,11 @@ class DamageFactors:
         self._weather: Union[float, int] = 1
         self._glaiverush: int = 1
         self._critical: Union[float, int] = 1
-        self.random: Union[float, int] = None
+        self.random: float = 1.0
         self._stab: Union[float, int] = 1
         self._type_effectiveness: Union[float, int] = 1
         self._burn: Union[float, int] = 1
-        self._other: extra_factors.ExtraFactors = None
+        self._other: Optional[extra_factors.ExtraFactors] = None
         self._zmove: Union[float, int] = 1
     
     def __repr__(self):
