@@ -161,7 +161,7 @@ class DamageFactors:
             self._zmove = 1
 
     @staticmethod
-    def quick_setup(dictionary: dict):
+    def from_dict(dictionary: dict):
         """Allow for a quick build of an instance via a dictionary (for testing purposes mainly)
 
         :param dictionary: dictionary with keys as attributes of the class
