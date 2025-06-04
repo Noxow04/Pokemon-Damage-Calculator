@@ -1,0 +1,6 @@
+[submodule "pokemon-chart"]
+	path = dependencies/pokemon-chart
+	url = git@github.com:zonination/pokemon-chart.git
+[submodule "pokemonData"]
+	path = dependencies/pokemonData
+	url = git@github.com:lgreski/pokemonData.git
