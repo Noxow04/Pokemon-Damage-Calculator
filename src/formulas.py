@@ -5,28 +5,64 @@ from extra_factors import ExtraFactors
 
 import utils
 
-def stat_formula(base, iv, ev, nature, level=100):
+STAT_NAMES = ['HP', 'Atk', 'Def', 'SpAtk', 'SpDef', 'Spe']
+generic_stats = namedtuple('stats', STAT_NAMES)
+
+def stat_formula(base: int, iv: int, ev: int, nature: float, level: int=100) -> int:
     """
-    :param base: int in 5-255
-    :param iv: int in 0-31
-    :param ev: int in 0-252
-    :param nature: .9, 1 or 1.1
-    :param level: int in 1-100
+    :param base: base value of the statistic (5-255)
+    :param iv: statistic's IVs (0-31)
+    :param ev: statistic's EVs (0-252)
+    :param nature: effect of the nature on the statistic, negative (.9), neutral (1), or positive (1.1)
+    :param level: pokemon level (1-100)
+    :return int: computed statistic value
     """
     return floor((floor(((2 * base + iv + floor(ev / 4)) * level) / 100) + 5) * nature)
 
 
-def hp_formula(base, iv, ev, level=100):
+def hp_formula(base: int, iv: int, ev: int, level:int=100) -> int:
     """
-    :param base: int in 5-255
-    :param iv: int in 0-31
-    :param ev: int in 0-252
-    :param level: int in 1-100
+    :param base: base hp statistic (5-255)
+    :param iv: hp's IVs (0-31)
+    :param ev: hp's EVs (0-252)
+    :param level: pokemon level (1-100)
+    :return int: computed hp value
     """
     return floor(((2 * base + iv + floor(ev / 4)) * level) / 100) + level + 10
 
+def get_all_stats(bases: generic_stats, ivs: generic_stats, evs: generic_stats, positive_nature: Optional[str], negative_nature: Optional[str], level: int) -> generic_stats:
+    """
+    :param bases: base statistics
+    :param ivs: IV of each statistic
+    :param evs: EV of each statistic
+    :param positive_nature: name of statistic positively affected by the nature
+    :param negative_nature: name of statistic negatively affected by the nature
+    :param level: level of the pokemon
+    :return generic_stats: returns the calculated stats values as a named tuple
+    """
+    stats = list()
+    nature = 1
+    for stat_name in STAT_NAMES:
+        if stat_name == 'HP':
+            stats.append(hp_formula(bases.HP, ivs.HP, evs.HP, level))
+        else:
+            nature = 0.9 if stat_name == negative_nature else (1.1 if stat_name == positive_nature else 1)
+            stats.append(stat_formula(getattr(bases, stat_name), 
+                                      getattr(ivs, stat_name), 
+                                      getattr(evs, stat_name), 
+                                      nature,
+                                      level))
+    return generic_stats(*stats)
 
-def damage_formula(level, power, attack, defense, other_factors: DamageFactors):
+
+def damage_formula(level: int, power: int, attack: int, defense: int, other_factors: DamageFactors) -> int:
+    """
+    :param level: pokemon level (1-100)
+    :param power: base power of the attack
+    :param relevant attacking statistic (Atk or SpAtk of the attacking pokemon)
+    :param relevant defending statistic (Def or SpDef of the defending pokemon)
+    :return int: computed damage value
+    """
     result = floor(((((2 * level) / 5 + 2) * power * (attack / defense)) / 50) + 2)
     factors = other_factors.variables
     count = 0
@@ -41,7 +77,14 @@ def damage_formula(level, power, attack, defense, other_factors: DamageFactors):
     return result
     
 
-def attack_range(factors: DamageFactors, level, power, attack, defense):
+def attack_range(level: int, power: int, attack: int, defense: int, factors: DamageFactors) -> tuple[int, int]:
+    """
+    :param level: pokemon level (1-100)
+    :param power: base power of the attack
+    :param attack: relevant attacking statistic (Atk or SpAtk of the attacking pokemon)
+    :param defense: relevant defending statistic (Def or SpDef of the defending pokemon)
+    :return tuple: minimum and maximum damage values possible
+    """
     factors.random = .85
     min_damage = damage_formula(level, power, attack, defense, factors)
     factors.random = 1
@@ -50,88 +93,34 @@ def attack_range(factors: DamageFactors, level, power, attack, defense):
 
 
 def main():
-    ic('testing :')
-    # abomasnow on abomasnow blizzard test
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 1,
-        "type_effectiveness": 0,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": False,
-            "expert_belt": False,
-            "life_orb": False,
-            "metronome": False
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 110, stat_formula(92, 31, 0, 1, 100),
-                          stat_formula(85, 31, 0, 1, 100))
-    expected = (127, 150)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
+    # calculating a lvl 16 / 12 IVs / 0 EVs / neutral nature pidgeotto attack
+    pidgeotto_attack = stat_formula(60,    # https://bulbapedia.bulbagarden.net/wiki/Pidgeotto_(Pokémon)#Base_stats
+                 12, 0, 1, 16)
+    print(f"{pidgeotto_attack = }")
 
-    # abomasnow on abomasnow earth power life orb on light screen test
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 0,
-        "type_effectiveness": -1,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": True,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": False,
-            "expert_belt": False,
-            "life_orb": True,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 90, stat_formula(92, 31, 0, 1, 100),
-                          stat_formula(85, 31, 0, 1, 100))
-    expected = (22, 27)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
+    # calculating a lvl 16 / 12 IVs / 0 EVs / pidgeotto hp
+    pidgeotto_hp = hp_formula(63,    # https://bulbapedia.bulbagarden.net/wiki/Pidgeotto_(Pokémon)#Base_stats
+                 12, 0, 16)
+    print(f"{pidgeotto_hp = }")
+    
+    # calculating all the stats of a lvl 100 pidgeot
+    # with 31 IVs in all stats, 252 EVs in Attack and Speed, 4 EVs in HP
+    # and a Jolly nature (+Spe / -SpAtk)
+    pidgeot_stats = get_all_stats(generic_stats(83, 80, 75, 70, 70, 101),   # https://bulbapedia.bulbagarden.net/wiki/Pidgeot_(Pokémon)#Generation_VI_onward
+                                  generic_stats(31, 31, 31, 31, 31, 31), 
+                                  generic_stats(4, 252, 0, 0, 0, 252), 
+                                  'Spe', 'SpAtk', 100)
+    print(pidgeot_stats)
 
-    # lvl 75 glaceon ice fang on grachomp (bulbapedia example 1)
+    # lvl 75 Atk glaceon ice fang on garchomp (bulbapedia example 1 : https://bulbapedia.bulbagarden.net/wiki/Damage#Example)
     damage_factors_test_values = DamageFactors.from_dict({
         "pb": False,
         "weather": 0,
         "glaiverush": False,
         "critical": False,
         "random": None,
-        "stab": 1,
-        "type_effectiveness": 2,
+        "stab": 1,                  # glaceon is ice-type and so is ice fang
+        "type_effectiveness": 2,    # an ice move is 4 times effective on garchomp
         "burn": False,
         "zmove": False,
         "other": ExtraFactors.from_dict({
@@ -151,58 +140,31 @@ def main():
             "life_orb": False,
             "metronome": 0
         })})
-    returned = attack_range(damage_factors_test_values, 75, 65, 123, 163)
-    expected = (168, 196)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
+    example_1 = attack_range(75,     # Glaceon level
+                            65,     # Base Power (BP) of Ice Fang 
+                            123,    # attack value of the glaceon
+                            163,    # defense value of the garchomp
+                            damage_factors_test_values)
+    print(f"example 1: {example_1[0]}-{example_1[1]}") # expected 168-196
 
-    # lvl 75 glaceon muscle band ice fang crtical on grachomp (bulbapedia example 2)
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": True,
-        "random": None,
-        "stab": 1,
-        "type_effectiveness": 2,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": 0,
-            "expert_belt": False,
-            "life_orb": False,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 75, 71, 123, 163)
-    expected = (268, 324)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
-
-    # burned kartana giga impact on arceus fighting
+    # burned 252 Atk EVs / 31 Atk IVs / positive nature / lvl 100 kartana giga impact
+    # on 252 Def Evs / 31 Def IVs / neutral nature / lvl 100 arceus fighting
+    kartana_attack = stat_formula(181,  # https://bulbapedia.bulbagarden.net/wiki/Kartana_(Pokémon)#Base_stats
+                                  31,   # IVs
+                                  252,  # EVs
+                                  1.1)  # positive nature
+    # since level is 100 by default no need to specify a value
+    arceus_defense = stat_formula(120,  # https://bulbapedia.bulbagarden.net/wiki/Arceus_(Pokémon)#Base_stats
+                                  31, 252, 1)
     damage_factors_test_values = DamageFactors.from_dict({
         "pb": False,
         "weather": 0,
         "glaiverush": False,
         "critical": False,
         "random": None,
-        "stab": 0,
-        "type_effectiveness": 0,
-        "burn": True,
+        "stab": 0,                  # kartana is not normal-type and giga impact is a normal attack
+        "type_effectiveness": 0,    # a normal attack has neutral effectiveness on Arceus-fighting
+        "burn": True,               # as stated, kartana is burned
         "zmove": False,
         "other": ExtraFactors.from_dict({
             "dynamax": False,
@@ -221,335 +183,15 @@ def main():
             "life_orb": False,
             "metronome": 0
         })})
-    returned = attack_range(damage_factors_test_values, 100, 150, 507, 372)
-    expected = (73, 86)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
+    example_2 = attack_range(100,    # kartana level 
+                            150,    # giga impact BP
+                            kartana_attack, 
+                            arceus_defense, 
+                            damage_factors_test_values)
+    print(f"example 2: {example_2[0]}-{example_2[1]}")
+    # expected 80-95 from https://calc.pokemonshowdown.com :     
+    # 252+ Atk burned Kartana Giga Impact vs. 0 HP / 252 Def Arceus-Fighting: 80-95 (20.9 - 24.9%) -- guaranteed 5HKO
 
-    #groudon earthquake expert belt on Heatran
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 1,
-        "type_effectiveness": 2,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": 0,
-            "expert_belt": True,
-            "life_orb": False,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 100, 438, 311)
-    expected = (734, 864)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
-
-    #yanmega tinted lens surf under the rain on amoonguss
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 1,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 0,
-        "type_effectiveness": -1,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": True,
-            "fluffy": False,
-            "type_berry": 0,
-            "expert_belt": False,
-            "life_orb": False,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 90, 364, 284)
-    expected = (124, 146)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
-
-    #cryogonal adaptability life orb ice beam on yache berry garchomp
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 2,
-        "type_effectiveness": 2,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": 1,
-            "expert_belt": False,
-            "life_orb": True,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 90, 226, 206)
-    expected = (369, 437)
-    if returned[0] == expected[0] and returned[1] == expected[1]:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
-
-    #volcarona tera fire adaptability fireblast metronome after 2 uses under the rain on fluffy blissey
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": -1,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 3,
-        "type_effectiveness": 0,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": True,
-            "type_berry": 0,
-            "expert_belt": False,
-            "life_orb": False,
-            "metronome": 2
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 110, 306, 306)
-    expected = (246, 297)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
-
-    #rayquaza dragon breath on chansey
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 1,
-        "type_effectiveness": 0,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": 0,
-            "expert_belt": False,
-            "life_orb": False,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 60, stat_formula(150, 31, 252, 1.1, 100), stat_formula(105, 31, 8, 1, 100))
-    expected = (115, 136)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
-
-    #rayquaza outrage on pidgeotto
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 1,
-        "type_effectiveness": 0,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": 0,
-            "expert_belt": False,
-            "life_orb": False,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 120, stat_formula(150, 31, 252, 1, 100), stat_formula(55, 31, 0, 1, 100))
-    expected = (352, 415)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
-
-    #marowak bonemerang on pikachu
-    # Note: multihits must use their base power and be multiplied after damage calculation (add that to the Attack class))
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 1,
-        "type_effectiveness": 1,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": 0,
-            "expert_belt": False,
-            "life_orb": False,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 50, stat_formula(80, 31, 252, 1.1, 100), stat_formula(40, 31, 0, 1, 100))
-    expected = (264, 312)
-    #252+ Atk Marowak Bonemerang (2 hits) vs. 0 HP / 0 Def Pikachu: 528-624 (divided by 2 because multihit)
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
-
-    #sawk close combat on staraptor
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 1,
-        "type_effectiveness": 0,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": 0,
-            "expert_belt": False,
-            "life_orb": False,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 120, stat_formula(125, 31, 252, 1.1, 100), stat_formula(70, 31, 0, 1, 100))
-    expected = (280, 331)
-    #252+ Atk Sawk Close Combat vs. 0 HP / 0 Def Staraptor: 280-331 (90 - 106.4%) -- 37.5% chance to OHKO
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
-
-    #ratata quick attack on onix
-    damage_factors_test_values = DamageFactors.from_dict({
-        "pb": False,
-        "weather": 0,
-        "glaiverush": False,
-        "critical": False,
-        "random": None,
-        "stab": 1,
-        "type_effectiveness": -1,
-        "burn": False,
-        "zmove": False,
-        "other": ExtraFactors.from_dict({
-            "dynamax": False,
-            "minimize": False,
-            "dig_dive": False,
-            "screens": False,
-            "paradox_duo_attack": False,
-            "multiscale_and_others": False,
-            "filter_and_others": False,
-            "neuroforce": False,
-            "sniper": False,
-            "tinted_lens": False,
-            "fluffy": False,
-            "type_berry": 0,
-            "expert_belt": False,
-            "life_orb": False,
-            "metronome": 0
-        })})
-    returned = attack_range(damage_factors_test_values, 100, 40, stat_formula(56, 31, 0, 1, 100), stat_formula(160, 31, 0, 1, 100))
-    expected = (9, 11)
-    #0 Atk Rattata Quick Attack vs. 0 HP / 0 Def Onix: 9-11 (4.2 - 5.2%) -- possibly the worst move ever
-    if returned == expected:
-        ic("ok")
-    else:
-        print(f"{expected[0]}-{expected[1]} | got {returned[0]}-{returned[1]}")
 
 if __name__ == "__main__":
-    if "no-ic" in sys.argv:
-        ic = print
-    else:
-        ic.configureOutput(prefix="> ")
     main()
