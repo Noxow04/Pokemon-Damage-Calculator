@@ -2,16 +2,10 @@
 
 This project is a Pokemon damage calculator for a single attack.
 
-<<<<<<< HEAD
-Based on https://calc.pokemonshowdown.com for the idea. Developped, for now, for Generation 9 Singles only.
-
-## Roadblocks
-=======
 Based on [Pokémon Showdown Damage Calculator](https://calc.pokemonshowdown.com) ([github](https://github.com/smogon/damage-calc)) for the idea. Developped, for now, for Generation 9 Singles only.
 
 ## Roadblocks
 
->>>>>>> release-0.1
 - Full coverage testing
 - Up to date documentation
 - 'Pokemon' class with stats, typing, nature, etc
@@ -20,12 +14,6 @@ Based on [Pokémon Showdown Damage Calculator](https://calc.pokemonshowdown.com)
 - Database usage for type effectiveness
 - Database usage to get a pokemon data directly from its name
 - Visual interface
-<<<<<<< HEAD
-### Extras
-- Speed optimiser
-- Bulk optimiser
-- Multiple languages support
-=======
 
 ### Extras
 
@@ -66,4 +54,3 @@ To run the entry point, execute the formulas module in the src directory
 cd src
 python -m formulas
 ```
->>>>>>> release-0.1
