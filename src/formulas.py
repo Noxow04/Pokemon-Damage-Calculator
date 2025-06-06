@@ -7,6 +7,8 @@ import utils
 
 STAT_NAMES = ['HP', 'Atk', 'Def', 'SpAtk', 'SpDef', 'Spe']
 generic_stats = namedtuple('stats', STAT_NAMES)
+# value_id_wrap = namedtuple('value_id_wrap', ['value', 'id'])
+
 
 def stat_formula(base: int, iv: int, ev: int, nature: float, level: int=100) -> int:
     """
@@ -55,41 +57,114 @@ def get_all_stats(bases: generic_stats, ivs: generic_stats, evs: generic_stats, 
     return generic_stats(*stats)
 
 
-def damage_formula(level: int, power: int, attack: int, defense: int, other_factors: DamageFactors) -> int:
-    """
-    :param level: pokemon level (1-100)
-    :param power: base power of the attack
-    :param relevant attacking statistic (Atk or SpAtk of the attacking pokemon)
-    :param relevant defending statistic (Def or SpDef of the defending pokemon)
-    :return int: computed damage value
-    """
-    result = floor(((((2 * level) / 5 + 2) * power * (attack / defense)) / 50) + 2)
-    factors = other_factors.variables
-    count = 0
-    for factor in factors:
-        assert(factor)
-        if count in (4, 6):
-            #random and type_effectiveness
-            result = floor(result * factor)
-        else:
-            result = utils.my_round_down(result * factor)
-        count += 1
-    return result
-    
+class Damage:
+    def __init__(self) -> None:
+        self._level: int = 100
+        self._power: Optional[int] = None
+        self._attack: Optional[int] = None
+        self._defense: Optional[int] = None
+        self._other_factors: Optional[DamageFactors] = None
 
-def attack_range(level: int, power: int, attack: int, defense: int, factors: DamageFactors) -> tuple[int, int]:
-    """
-    :param level: pokemon level (1-100)
-    :param power: base power of the attack
-    :param attack: relevant attacking statistic (Atk or SpAtk of the attacking pokemon)
-    :param defense: relevant defending statistic (Def or SpDef of the defending pokemon)
-    :return tuple: minimum and maximum damage values possible
-    """
-    factors.random = .85
-    min_damage = damage_formula(level, power, attack, defense, factors)
-    factors.random = 1
-    max_damage = damage_formula(level, power, attack, defense, factors)
-    return min_damage, max_damage
+    @property
+    def level(self) -> Optional[int]:
+        return self._level
+    @level.setter
+    def level(self, value: int):
+        if 1 <= value <= 100:
+            self._level = value
+
+    @property
+    def power(self) -> Optional[int]:
+        return self._power
+    @power.setter
+    def power(self, value: int):
+        if isinstance(value, int) and value > 0:
+            self._power = value
+
+    @property
+    def attack(self) -> Optional[int]:
+        return self._attack
+    @attack.setter
+    def attack(self, value: int):
+        if isinstance(value, int) and value > 0:
+            self._attack = value
+
+    @property
+    def defense(self) -> Optional[int]:
+        return self._defense
+    @defense.setter
+    def defense(self, value: int):
+        if isinstance(value, int) and value > 0:
+            self._defense = value
+
+    @property
+    def other_factors(self) -> Optional[DamageFactors]:
+        return self._other_factors
+    @other_factors.setter
+    def other_factors(self, value: DamageFactors):
+        if isinstance(value, DamageFactors):
+            self._other_factors = value
+
+    @property
+    def damage(self) -> int:
+        """
+        :return int: computed damage value
+        """
+        if not self.level:
+            raise ValueError("self.level must not be None for damage calculation")
+        if not self.attack:
+            raise ValueError("self.attack must not be None for damage calculation")
+        if not self.defense:
+            raise ValueError("self.defense must not be None for damage calculation")
+        if not self.other_factors:
+            raise ValueError("self.other_factors must not be None for damage calculation")
+        if not self.power:
+            raise ValueError("self.power must not be None for damage calculation")
+        result = floor(((((2 * self.level) / 5 + 2) * self.power * (self.attack / self.defense)) / 50) + 2)
+        factors = self.other_factors.variables
+        count = 0
+        for factor in factors:
+            assert(factor)
+            if count in (4, 6):
+                #random and type_effectiveness
+                result = floor(result * factor)
+            else:
+                result = utils.my_round_down(result * factor)
+            count += 1
+        return result
+
+    @property
+    def damage_range(self) -> tuple[int, int]:
+        """
+        :return tuple: minimum and maximum damage values possible
+        """
+        if not self.other_factors:
+            raise ValueError("self.other_factors must not be None for damage calculation")
+        self.other_factors.random = .85
+        min_damage = self.damage
+        self.other_factors.random = 1
+        max_damage = self.damage
+        return (min_damage, max_damage)
+
+    @property
+    def damage_array(self) -> tuple[int, ...]:
+        """
+        :return tuple: array of all 15 damage values possible
+        """
+        if not self.other_factors:
+            raise ValueError("self.other_factors must not be None for damage calculation")
+        damage_values = list()
+        for random in range(85, 101):
+            self.other_factors.random = random/100
+            damage_values.append(self.damage)
+        return tuple(damage_values)
+
+    @staticmethod
+    def from_dict(dictionary):
+        new_instance = Damage()
+        for key, value in dictionary.items():
+            setattr(new_instance, key, value)
+        return new_instance
 
 
 def main():
@@ -140,12 +215,14 @@ def main():
             "life_orb": False,
             "metronome": 0
         })})
-    example_1 = attack_range(75,     # Glaceon level
-                            65,     # Base Power (BP) of Ice Fang 
-                            123,    # attack value of the glaceon
-                            163,    # defense value of the garchomp
-                            damage_factors_test_values)
-    print(f"example 1: {example_1[0]}-{example_1[1]}") # expected 168-196
+    example_1 = Damage.from_dict({
+        "level": 75,     # Glaceon level
+        "power": 65,     # Base Power (BP) of Ice Fang 
+        "attack": 123,    # attack value of the glaceon
+        "defense": 163,    # defense value of the garchomp
+        "other_factors": damage_factors_test_values
+        })
+    print(example_1.damage_range) # expected 168-196
 
     # burned 252 Atk EVs / 31 Atk IVs / positive nature / lvl 100 kartana giga impact
     # on 252 Def Evs / 31 Def IVs / neutral nature / lvl 100 arceus fighting
@@ -183,14 +260,55 @@ def main():
             "life_orb": False,
             "metronome": 0
         })})
-    example_2 = attack_range(100,    # kartana level 
-                            150,    # giga impact BP
-                            kartana_attack, 
-                            arceus_defense, 
-                            damage_factors_test_values)
-    print(f"example 2: {example_2[0]}-{example_2[1]}")
+    example_2 = Damage.from_dict({
+        "level": 100,    # kartana level 
+        "power": 150,    # giga impact BP
+        "attack": kartana_attack, 
+        "defense": arceus_defense, 
+        "other_factors": damage_factors_test_values
+        })
+    print(example_2.damage_range)
     # expected 80-95 from https://calc.pokemonshowdown.com :     
     # 252+ Atk burned Kartana Giga Impact vs. 0 HP / 252 Def Arceus-Fighting: 80-95 (20.9 - 24.9%) -- guaranteed 5HKO
+
+    # abomasnow on abomasnow blizzard test
+    damage_factors_test_values = DamageFactors.from_dict({
+        "pb": False,
+        "weather": 0,
+        "glaiverush": False,
+        "critical": False,
+        "random": None,
+        "stab": 1,
+        "type_effectiveness": 0,
+        "burn": False,
+        "zmove": False,
+        "other": ExtraFactors.from_dict({
+            "dynamax": False,
+            "minimize": False,
+            "dig_dive": False,
+            "screens": False,
+            "paradox_duo_attack": False,
+            "multiscale_and_others": False,
+            "filter_and_others": False,
+            "neuroforce": False,
+            "sniper": False,
+            "tinted_lens": False,
+            "fluffy": False,
+            "type_berry": False,
+            "expert_belt": False,
+            "life_orb": False,
+            "metronome": False
+        })})
+    example_3 = Damage.from_dict({
+        "level": 100,
+        "power": 110,
+        "attack": stat_formula(92, 31, 0, 1, 100),
+        "defense": stat_formula(85, 31, 0, 1, 100),
+        "other_factors": damage_factors_test_values
+    })
+    # expected (127, 150) and (127, 129, 130, 132, 133, 135, 136, 138, 139, 141, 142, 144, 145, 147, 148, 150)
+    print(example_3.damage_range)
+    print(example_3.damage_array)
 
 
 if __name__ == "__main__":

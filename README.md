@@ -29,20 +29,25 @@ Inside that file, modify the `main()` function.
 To easily create **DamageFactors** and **ExtraFactors** instances, use of the `from_dict()` method is recommended.
 
 ### Basic funtions
+
 Examples for how to use these functions can be found in `src/formulas.py` main function.
 
 #### damage_formula()
+
 Compute and return the expected damage from a certain attack explicitly given all parameters, namely : the level of the attacker, the base power of the attack, the relevant attack (attack or special attack) stat, the relevant defense (defense or special defense) stat and extra damage factors (cf damage_factors.py and extra_factors.py), including the 'random' factor.
 
 #### attack_range()
+
 Compute and return the minimum and maximum values of `damage_formula()`, using the minimum and maximum 'random' values (being 0.85 and 1 respectively).
 If given a DamageFactor instance with a set random value, that value will be overwritten.
 
 #### stat_formula()
-Compute and return the value of any statistic (except HP) given its base value, the pokemon's level, the EVs and IVs, and the effect of the pokemon nature on that statistic (neutral, positive or negative) 
+
+Compute and return the value of any statistic (except HP) given its base value, the pokemon's level, the EVs and IVs, and the effect of the pokemon nature on that statistic (neutral, positive or negative)
 
 #### hp_formula()
-Compute and return 
+
+Compute and return
 
 ## How to run
 
@@ -50,7 +55,13 @@ Compute and return
 
 To run the entry point, execute the formulas module in the src directory
 
-```cmd
+```shell
 cd src
 python -m formulas
+```
+
+or
+
+```shell
+& python src/formulas.py
 ```
