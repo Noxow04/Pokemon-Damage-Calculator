@@ -125,6 +125,8 @@ class Damage:
         count = 0
         for factor in factors:
             assert(factor)
+            if isinstance(factor, ExtraFactors):
+                factor = factor.total()
             if count in (4, 6):
                 #random and type_effectiveness
                 result = floor(result * factor)

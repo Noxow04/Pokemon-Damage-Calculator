@@ -12,7 +12,7 @@ class DamageFactors:
         self._stab: Union[float, int] = 1
         self._type_effectiveness: Union[float, int] = 1
         self._burn: Union[float, int] = 1
-        self._other: Optional[extra_factors.ExtraFactors] = None
+        self.other: Optional[extra_factors.ExtraFactors] = None
         self._zmove: Union[float, int] = 1
     
     def __repr__(self):
@@ -137,16 +137,6 @@ class DamageFactors:
             self._burn = .5
         else:
             self._burn = 1
-
-    @property
-    def other(self):
-        if self._other is None:
-            return 1
-        return self._other.total()
-    @other.setter
-    def other(self, factors: extra_factors.ExtraFactors):
-        assert(isinstance(factors, extra_factors.ExtraFactors))
-        self._other = factors
 
     @property
     def zmove(self):
