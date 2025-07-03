@@ -65,3 +65,17 @@ or
 ```shell
 & python src/formulas.py
 ```
+
+### Tests and coverage
+
+```sh
+cd test/
+coverage run damage_formula.py
+coverage report
+```
+
+For a detailled report (after executing `coverage run`)
+
+```sh
+coverage html
+```

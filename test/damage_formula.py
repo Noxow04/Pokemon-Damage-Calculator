@@ -2,43 +2,213 @@ import unittest
 import sys
 
 sys.path.append("../src")
-from formulas import damage_formula, DamageFactors, ExtraFactors
+from formulas import Damage, DamageFactors, ExtraFactors
 
 class TestDamageFormula(unittest.TestCase):
-    def test_basic_whole_range(self):
+    def setUp(self):
+        damage_factors_default_values = DamageFactors.from_dict({
+        "pb": False,
+        "weather": 0,
+        "glaiverush": False,
+        "critical": False,
+        "random": None,
+        "stab": 0,
+        "type_effectiveness": 0,
+        "burn": False,
+        "zmove": False,
+        "other": ExtraFactors.from_dict({
+            "dynamax": False,
+            "minimize": False,
+            "dig_dive": False,
+            "screens": False,
+            "paradox_duo_attack": False,
+            "multiscale_and_others": False,
+            "filter_and_others": False,
+            "neuroforce": False,
+            "sniper": False,
+            "tinted_lens": False,
+            "fluffy": False,
+            "type_berry": False,
+            "expert_belt": False,
+            "life_orb": False,
+            "metronome": False
+        })})
+        self.damage_test_object_generic = Damage.from_dict({
+            "power": 100,
+            "attack": 200,
+            "defense": 200,
+            "other_factors": damage_factors_default_values,
+        })
+    
+    def testBasicRange(self):
+        # Test with basic range (min and max)
+        # abomasnow on abomasnow blizzard test
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.power = 110
+        test_object.attack = 220
+        test_object.defense = 206
+        test_object.other_factors.stab = 1
+        expected = (127, 150)
+        self.assertEqual(test_object.damage_range, expected)
+
+    def testBasicArray(self):
         # Test with basic whole range
         # abomasnow on abomasnow blizzard test
-        damage_factors_test_values = DamageFactors.from_dict({
-            "pb": False,
-            "weather": 0,
-            "glaiverush": False,
-            "critical": False,
-            "random": None,
-            "stab": 1,
-            "type_effectiveness": 0,
-            "burn": False,
-            "zmove": False,
-            "other": ExtraFactors.from_dict({
-                "dynamax": False,
-                "minimize": False,
-                "dig_dive": False,
-                "screens": False,
-                "paradox_duo_attack": False,
-                "multiscale_and_others": False,
-                "filter_and_others": False,
-                "neuroforce": False,
-                "sniper": False,
-                "tinted_lens": False,
-                "fluffy": False,
-                "type_berry": False,
-                "expert_belt": False,
-                "life_orb": False,
-                "metronome": False
-            })})
-        for random, expected in zip(range(85, 101), (127, 129, 130, 132, 133, 135, 136, 138, 139, 141, 142, 144, 145, 147, 148, 150)):
-            damage_factors_test_values.random = random / 100
-            returned = damage_formula(100, 110, 220, 206, damage_factors_test_values)
-            self.assertEqual(returned, expected)
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.power = 110
+        test_object.attack = 220
+        test_object.defense = 206
+        test_object.other_factors.stab = 1
+        expected = (127, 129, 130, 132, 133, 135, 136, 138, 139, 141, 142, 144, 145, 147, 148, 150)
+        self.assertEqual(test_object.damage_array, expected)
+
+    def testBasicValues(self):
+        # Test setting each random value manually
+        # abomasnow on abomasnow blizzard test
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.power = 110
+        test_object.attack = 220
+        test_object.defense = 206
+        test_object.other_factors.stab = 1
+        random = 85
+        expected = (127, 129, 130, 132, 133, 135, 136, 138, 139, 141, 142, 144, 145, 147, 148, 150)
+        for i in range(16):
+            assert test_object.other_factors
+            test_object.other_factors.random = (random + i) / 100
+            with self.subTest(i=i):
+                self.assertEqual(test_object.damage, expected[i])
+
+    def testBasic2(self):
+        # abomasnow on abomasnow earth power life orb on light screen test
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        assert test_object.other_factors.other
+        test_object.power = 90
+        test_object.attack = 220
+        test_object.defense = 206
+        test_object.other_factors.type_effectiveness = -1
+        test_object.other_factors.other.life_orb = True
+        test_object.other_factors.other.screens = True
+        expected = (22, 27)
+        self.assertEqual(test_object.damage_range, expected)
+
+    def testBasic3(self):
+        # lvl 75 glaceon ice fang on grachomp (bulbapedia example 1)
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        assert test_object.other_factors.other
+        test_object.level = 75
+        test_object.power = 65
+        test_object.attack = 123
+        test_object.defense = 163
+        test_object.other_factors.type_effectiveness = 2
+        test_object.other_factors.stab = 1
+        expected = (168, 196)
+        self.assertEqual(test_object.damage_range, expected)
+
+    def testBasic4(self):
+        # lvl 75 glaceon muscle band ice fang crtical on grachomp (bulbapedia example 2)
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        assert test_object.other_factors.other
+        test_object.level = 75
+        test_object.power = 71  # round_down(65 + 65/10) because of muscle band
+        test_object.attack = 123
+        test_object.defense = 163
+        test_object.other_factors.critical = True
+        test_object.other_factors.type_effectiveness = 2
+        test_object.other_factors.stab = 1
+        expected = (268, 324)
+        self.assertEqual(test_object.damage_range, expected)
+
+    def testParentalBond(self):
+        # default values with parental bond
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.other_factors.pb = True
+        expected = (17, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19, 20, 20, 20, 20, 21)
+        array = test_object.damage_array
+        for i in range(16):
+            with self.subTest(i=i):
+                self.assertEqual(array[i], expected[i])
+
+    def testWeather1(self):
+        # default values with positive weather
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.other_factors.weather = 1
+        expected = (109, 110, 112, 113, 114, 116, 117, 118, 119, 121, 122, 123, 125, 126, 127, 129)
+        array = test_object.damage_array
+        for i in range(16):
+            with self.subTest(i=i):
+                self.assertEqual(array[i], expected[i])
+    def testWeather2(self):
+        # default values with negative weather
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.other_factors.weather = -1
+        expected = (36, 36, 37, 37, 38, 38, 39, 39, 39, 40, 40, 41, 41, 42, 42, 43)
+        array = test_object.damage_array
+        for i in range(16):
+            with self.subTest(i=i):
+                self.assertEqual(array[i], expected[i])
+
+    def testGlaiveRush(self):
+        # default values with glaive rush
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.other_factors.glaiverush = True
+        expected = (146, 147, 149, 151, 153, 154, 156, 158, 159, 161, 163, 165, 166, 168, 170, 172)
+        array = test_object.damage_array
+        for i in range(16):
+            with self.subTest(i=i):
+                self.assertEqual(array[i], expected[i])
+
+    def testCritical(self):
+        # default values with critical hit
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.other_factors.critical = True
+        expected = (109, 110, 112, 113, 114, 116, 117, 118, 119, 121, 122, 123, 125, 126, 127, 129)
+        array = test_object.damage_array
+        for i in range(16):
+            with self.subTest(i=i):
+                self.assertEqual(array[i], expected[i])
+
+    def testSTAB1(self):
+        # default values with basic STAB
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.other_factors.stab = 1
+        expected =  (109, 109, 111, 112, 114, 115, 117, 118, 118, 120, 121, 123, 124, 126, 127, 129)
+        array = test_object.damage_array
+        for i in range(16):
+            with self.subTest(i=i):
+                self.assertEqual(array[i], expected[i])
+    def testSTAB2(self):
+        # default values with Adaptability STAB
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.other_factors.stab = 2
+        expected = (146, 146, 148, 150, 152, 154, 156, 158, 158, 160, 162, 164, 166, 168, 170, 172)
+        array = test_object.damage_array
+        for i in range(16):
+            with self.subTest(i=i):
+                self.assertEqual(array[i], expected[i])
+    def testSTAB3(self):
+        # default values with Adaptability and Tera Type STAB
+        test_object = self.damage_test_object_generic
+        assert test_object.other_factors
+        test_object.other_factors.stab = 3
+        expected =  (164, 164, 166, 169, 171, 173, 175, 178, 178, 180, 182, 184, 187, 189, 191, 193)
+        array = test_object.damage_array
+        for i in range(16):
+            with self.subTest(i=i):
+                self.assertEqual(array[i], expected[i])
+
 
 if __name__ == '__main__':
     unittest.main()
